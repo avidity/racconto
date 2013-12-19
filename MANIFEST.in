@@ -1,0 +1,7 @@
+README.txt
+setup.py
+recursive-include racconto *
+recursive-include racconto/hooks *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *~
