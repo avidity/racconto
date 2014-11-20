@@ -43,7 +43,7 @@ class Post(ContentBase):
         super(Post, self).__init__(options)
         self.slug = self.slug[11:] # Truncate date
         self.date = options["date"]
-        self.template = getattr(options, "template", SETTINGS.get('PAGE_TEMPLATE'))
+        self.template = getattr(options["config"], "template", SETTINGS.get('PAGE_TEMPLATE'))
         self.template_parameters["date"] = self.date
         self.filepath = "%s/%s" % (str(self.date.strftime('%Y-%m-%d')).replace('-','/'),
             self.slug,
