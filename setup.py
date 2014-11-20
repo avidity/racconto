@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='Racconto',
-    version='0.0.1',
+    version='0.0.2',
     # FIXME: walk directories instead of hard coding package names
     packages=['racconto','racconto.hooks'],
     license='MIT',
