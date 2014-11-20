@@ -57,7 +57,7 @@ def copy_static_files(*args):
         os.rename("%s/apple-touch-icon.png" % static_site,
                   "%s/apple-touch-icon.png" % SITEDIR)
     except OSError, e:
-        print "Error when copying favicon and apple-touch-icon."
+        print "[Warning] Could not copy favicon and apple-touch-icon."
 
 # FIXME consolidate these two methods
 def generate_blog_index_file_10(pages, posts):
