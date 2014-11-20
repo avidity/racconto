@@ -28,7 +28,7 @@ class Page(ContentBase):
     def __init__(self, options):
         super(Page, self).__init__(options)
         self.filepath = "%s" % self.slug
-        self.template = getattr(options, "template", SETTINGS.get('PAGE_TEMPLATE'))
+        self.template = getattr(options["config"], "template", SETTINGS.get('PAGE_TEMPLATE'))
 
 @total_ordering # Auto generate missing ordering methods
 class Post(ContentBase):
