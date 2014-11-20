@@ -46,7 +46,10 @@ def compile_site():
     HooksManager.run_before_all_hooks(pages, posts)
 
     # Generate site
-    for parsed_file in pages + posts:
+    for parsed_file in pages:
+        HooksManager.run_before_each_hooks(parsed_file)
+        Generator.generate(parsed_file, SETTINGS.get('SITEDIR'))
+    for parsed_file in posts:
         HooksManager.run_before_each_hooks(parsed_file)
         Generator.generate(parsed_file, SETTINGS.get('BLOGDIR'))
 
