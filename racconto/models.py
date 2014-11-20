@@ -30,6 +30,9 @@ class Page(ContentBase):
         self.filepath = "%s" % self.slug
         self.template = getattr(options["config"], "template", SETTINGS.get('PAGE_TEMPLATE'))
 
+    def __str__(self):
+        return "%s" % self.title
+
 @total_ordering # Auto generate missing ordering methods
 class Post(ContentBase):
     """
