@@ -11,6 +11,7 @@ build/
 develop-eggs/
 dist/
 eggs/
+env/
 lib/
 lib64/
 parts/
@@ -19,6 +20,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+setup.cfg
 MANIFEST
 
 # Installer logs
