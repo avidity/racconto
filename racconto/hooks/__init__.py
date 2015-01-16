@@ -1,6 +1,7 @@
 from datetime import datetime as d
 from distutils.dir_util import copy_tree
 import os
+import codecs
 
 from racconto.generator import Generator
 from racconto.settings_manager import SettingsManager as SETTINGS
