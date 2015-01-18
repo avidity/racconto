@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from functools import total_ordering
 from racconto.settings_manager import SettingsManager as SETTINGS
 
@@ -6,34 +6,56 @@ from racconto.settings_manager import SettingsManager as SETTINGS
 # Page containers (Post and Page)
 #
 
+class PageFactory(object):
+    def page(self, content, info):
+        path = info['filepath']
+        name = path.split('/')[-1:][0]
+        possible_date = " ".join(name.split('-')[0:3])
+
+        try:
+            info['date'] = datetime.strptime(possible_date, "%Y %m %d")
+            klass = Post
+        except ValueError:
+            klass = Page
+
+        return klass(content, info)
+
 class PageBase(object):
     """ Base class for compiled content """
-    def __init__(self, options):
-        self.title = options["title"]
-        self.template = options["template"]
-        self.content = PageContent(options["content"], options["meta"])
+    def __init__(self, content, info):
+        self.content = content
         self.meta = self.content.meta   # FIXME: Not sure about this interface
 
-        if "slug" in options.keys():
-            self.slug = options["slug"]
+        if "slug" in self.meta:
+            self.slug = self.meta.slug
         else:
-            self.slug = options["filepath"].split("/")[-1:][0].split(".")[0:-1][0]
+            self.slug = info["filepath"].split("/")[-1:][0].split(".")[0:-1][0]
 
-        self.template_parameters = {"title": self.title,
-                                    "content": self.content
-                                   }
-        # Add config variables to template parameters
-        for param in options["config"]:
-            self.template_parameters[param] = options["config"][param]
+        if 'title' in self.meta:
+            self.title = self.meta.title
+        else:
+            self.title = "Untitled"
 
-class Page(PageBase):
-    def __init__(self, options):
-        super(Page, self).__init__(options)
-        self.filepath = "%s" % self.slug
-        self.template = options["config"].get("template", SETTINGS.get('PAGE_TEMPLATE'))
+        self.template_parameters = {
+            "title": self.title,
+            "slug": self.slug,
+            "meta": self.meta,
+            "content": self.content
+        }
 
     def __str__(self):
         return "%s" % self.title
+
+class Page(PageBase):
+    pass
+    def __init__(self, content, options):
+        super(Page, self).__init__(content, options)
+        self.filepath = "%s" % self.slug
+
+        if 'template' in self.meta:
+            self.template = self.meta.template
+        else:
+            self.template = SETTINGS.get('PAGE_TEMPLATE')
 
 
 @total_ordering # Auto generate missing ordering methods
@@ -42,19 +64,25 @@ class Post(PageBase):
     Container for posts
     Implements __lt__ for sorting posts on their published date
     """
-    def __init__(self, options):
+    def __init__(self, content, info):
         """
         post - dictionary consisting of post properties
         """
-        super(Post, self).__init__(options)
+        super(Post, self).__init__(content, info)
         self.slug = self.slug[11:] # Truncate date
-        self.date = options["date"]
-        # FIXME: Fix this
-        self.template = options["template"] # , SETTINGS.get('PAGE_TEMPLATE'))
+        self.date = info['date']
+
+        if 'template' in self.meta:
+            self.template = self.meta.template
+        else:
+            self.template = SETTINGS.get('POST_TEMPLATE')
+
         self.template_parameters["date"] = self.date
-        self.filepath = "%s/%s" % (str(self.date.strftime('%Y-%m-%d')).replace('-','/'),
+        self.template_parameters["slug"] = self.slug
+        self.filepath = "%s/%s" % (
+            str(self.date.strftime('%Y-%m-%d')).replace('-','/'),
             self.slug,
-            )
+        )
 
     def __repr__(self):
         return "Post('%s', %s)" % (self.title, self.date)
@@ -83,6 +111,12 @@ class PageContent(object):
     def next(self):
         next(self._iter_sections)
 
+    def __getattr__(self, name):
+        try:
+            return self.sections[name]
+        except KeyError:
+            raise AttributeError("No section named %s" % name)
+
     def __iter__(self):
         return self._iter_sections
 
@@ -105,6 +139,18 @@ class Section(object):
     def __str__(self):
         return "%s" % (self.content)
 
-class Meta(object):
-    def __init__(self, options):
-        self.options = options
+class Meta(dict):
+    def __init__(self, values={}):
+        super(Meta, self).__init__(values)
+
+    def __setitem__(self, key, value):
+        raise MetaWriteError("Meta objects are read only")
+
+    def __getattr__(self, key):
+        try:
+            return self[key]
+        except KeyError:
+            raise AttributeError("No meta variable %s" % key)
+
+class MetaWriteError(Exception):
+    pass

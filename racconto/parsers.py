@@ -1,10 +1,9 @@
 import codecs
-from datetime import datetime
 import markdown2 as m
 import yaml
 import re
 
-from racconto.models import Post, Page
+from racconto.models import *
 
 from racconto.settings_manager import SettingsManager as SETTINGS
 
@@ -18,104 +17,127 @@ class MissingYAMLFrontMatterError(Exception):
 class EndOfFileError(Exception):
     pass
 
-class MetaBlockNotClosedError(EndOfFileError):
+class MetaBlockNotClosedError(Exception):
     pass
 
 class RaccontoParser():
-    def __init__(self):
+    def __init__(self, filepath):
+        self.fh_pos = 0
+        self.fh = None
+        self.filepath = filepath
 
         self.re_empty = re.compile(r'^\s*$')
-        self.re_meta_marker = re.compile(r'^---$')
+        self.re_meta_marker = re.compile(r'^---\s*$')
         self.re_section_marker = re.compile(r'^\s*@@@\s*(.+)\s*$')
 
-    def parse(self, filepath):
+    def parse(self):
         """Parses markdown content to html files.
         If file doesn't have a YAML Front Matter it
         stops parsing and returns None
         """
+
+        page_content = self._parse_file_content()
+
+        return PageFactory().page(page_content, {
+            "filepath": self.filepath
+        })
+
+
+    def _parse_file_content(self):
+        self.fh = codecs.open(self.filepath, 'r', 'utf-8')
+
         try:
-            page_meta, sections = self._parse_file_content(filepath)
-            #config, content = self._config_and_content_reader(filepath)
-        except MissingYAMLFrontMatterError:
-            print "File at '%s' is missing a YAML Front Matter config" % filepath
-            return None
-
-        return self._parse_file(filepath, config, content)
-
-
-    def _parse_file_content(self, filepath):
-        sections = []
-
-        fh = codecs.open(filepath, 'r', 'utf-8')
-        try:
-            page_meta = self._meta_section(self, fh)
-            sections  = self._content_sections(self, fh)
-
+            page_meta = self._meta_section()
+            sections  = self._content_sections()
         finally:
-            fh.close()
+            self.fh.close()
+
+        return PageContent(sections, page_meta)
 
 
-        return page_meta, sections
+    def _meta_section(self):
+        yaml_text = self._parse_meta_section()
+        if yaml_text is None:
+            return Meta()
 
+        return Meta(yaml.load(yaml_text))
 
-    def _meta_section(self, fh):
-        yaml = self._parse_meta_section(fh)
-        if yaml is None:
-            return None
-
-        return Meta({})
-        # Parse YAML, create Meta object and return
-
-    def _parse_meta_section(self, fh):
+    def _parse_meta_section(self):
         found_marker = False
         yaml = ""
 
-        while line in fh.readline():
+        for line in self.fh:
             if not found_marker:
-                if line.match(self.re_empty):
-                    continue
-                elif line.match(self.re_meta_marker):
+                if self.re_empty.match(line):
+                    pass
+                elif self.re_meta_marker.match(line):
                     found_marker = True
-                    continue
                 else:
                     # content other than yaml
-                    # FIXME: rewind one line
+                    self.fh.seek(self.fh_pos)
                     return None
             else:
-                if line.match(self.re_meta_marker):
+                if self.re_meta_marker.match(line):
                     return yaml
 
                 yaml += line
 
+            self.fh_pos = self.fh.tell()
+
         raise MetaBlockNotClosedError()
 
 
-    def _content_sections(self, fh):
+    def _content_sections(self):
         sections = []
+
         while True:
             try:
-                meta = self._meta_section(fh)
-                name, markdown = self._parse_content_section(fh)
+                meta = self._meta_section()
+                name, content, eof = self._parse_content_section()
+
+                if name is None:
+                    name = "section_%s" % len(sections)
+
+                markdown = m.markdown(content, extras=SETTINGS.get('MARKDOWN_EXTRAS'))
+                sections.append( Section(name, markdown, meta) )
+
+                if eof:
+                    raise EndOfFileError()
+
             except EndOfFileError:
                 break
-
-            if name is None:
-                name = "section-%s" % len(sections)
-
-            # FIXME: Parse markdown here
-            sections.append( Section(name, markdown, meta) )
 
         return sections
 
 
-    def _parse_content_section(self, fh):
-        has_marker = False
+    def _parse_content_section(self):
+        found_content = False
         markdown = ""
+        name = None
 
-        while line in fh.readline():
-            pass
+        for line in self.fh:
+            if not found_content:
+                if self.re_empty.match(line):
+                    continue
 
-        raise EndOfFileError()
+                found_content = True
+
+                m = self.re_section_marker.match(line)
+                if m:
+                    name = m.group(1)
+                    continue
+
+            if self.re_section_marker.match(line):
+                # rewind line
+                self.fh.seek(self.fh_pos)
+                return name, markdown, False
+
+            self.fh_pos = self.fh.tell()
+            markdown += line
+
+        return name, markdown, True
+
+
 
 
     # def _config_and_content_reader(self, filepath):
@@ -131,7 +153,6 @@ class RaccontoParser():
     #         # File must start with YAML Front Matter
     #         if index == 0 and not line.startswith(config_separator):
     #             raise MissingYAMLFrontMatterError("File must start with YAML Front Matter")
-
     #         if line.startswith(config_separator):
     #             raw_data["reading_config"] = not raw_data["reading_config"]
     #             continue
