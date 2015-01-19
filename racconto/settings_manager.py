@@ -15,7 +15,6 @@ class SettingsManager(object):
         'BLOG_INDEX_TEMPLATE': 'index.j2',
 
         'IGNORE_PATTERNS': [],
-        "CONFIG_SEPARATOR": '---',
         'FILTERS': {},
         'MARKDOWN_EXTRAS': ["fenced-code-blocks"],
         }

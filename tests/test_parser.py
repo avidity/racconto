@@ -1,14 +1,8 @@
 import unittest
 import os
 
-from racconto.models import Post, Page, PageContent, Section, Meta
-from racconto.parsers import RaccontoParser
-
-
-#def mocked_open(name, mode, encoding):
-#    s = StringIO.StringIO()
-#    s.write(templates.get(name))
-#    return s
+from racconto.models import *
+from racconto.parsers import *
 
 def path_to(template):
     return os.path.abspath(os.path.join('tests', 'support', 'templates', template + '.md'))
@@ -17,113 +11,76 @@ def path_to(template):
 class TestParse(unittest.TestCase):
     def setUp(self):
         pass
-#        with patch('codecs.open') as mocked_open:
-#            s = StringIO.StringIO()
-#            s.write(templates.get()
-#            mocked_open.return_value = s
-#
-#        codecs.open = mock.MagicMock()
-#        patcher = patch('codecs.open', new_callable=mocked_open)
-
-#        self._codecs_open = codecs.openor-just-replace-method-with-mock
-#        codecs.open =
-#        codecs.open = mock.Mock(return_value=CodecsMock().open())
 
     def tearDown(self):
         pass
-#        codecs.open = self._codecs_open
 
     def parse(self, template):
         return RaccontoParser(path_to(template)).parse()
 
     def test_meta_and_content(self):
-        result = self.parse('meta_and_content')
+        page = self.parse('meta_and_content')
 
-        self.assertIsInstance(result, Page)
-        self.assertIsInstance(result.content, PageContent)
-        self.assertIsInstance(result.meta, Meta)
+        self.assertIsInstance(page, Page)
+        self.assertIsInstance(page.content, PageContent)
+        self.assertIsInstance(page.meta, Meta)
 
     def test_page_meta_extraction(self):
-        result = self.parse('meta_and_content')
+        page = self.parse('meta_and_content')
 
-        self.assertEqual(result.title, 'Page Title')
-        self.assertEqual(result.slug, 'meta_and_content')
-        self.assertEqual(result.meta.list, ['first thing', 'second thing'])
+        self.assertEqual(page.title, 'Page Title')
+        self.assertEqual(page.slug, 'meta_and_content')
+        self.assertEqual(page.meta.list, ['first thing', 'second thing'])
 
     def test_content_extraction(self):
-        result = self.parse('meta_and_content')
+        page = self.parse('meta_and_content')
 
-        self.assertEqual(len(result.content), 1)
-        self.assertEqual("%s" % result.content, '<p>Here are the contents</p>\n')
+        self.assertEqual(len(page.content), 1)
+        self.assertEqual("%s" % page.content, '<p>Here are the contents</p>\n')
+
+    def test_bad_meta(self):
+        self.assertRaises(MetaBlockYAMLParseError, self.parse, 'bad_meta')
+
+    def test_unclosed_page_meta(self):
+        self.assertRaises(MetaBlockNotClosedError, self.parse, 'unclosed_page_meta')
+
+    def test_named_section(self):
+        page = self.parse('named_section')
+
+        self.assertEqual(len(page.content), 1)
+        self.assertIsInstance(page.content.my_section, Section)
+        self.assertEqual("%s" % page.content.my_section, "<p>Here are the contents of my_section</p>\n")
+
+    def test_two_named_sections(self):
+        page = self.parse('two_named_sections')
+
+        self.assertEqual(len(page.content), 2)
+        self.assertEqual("%s" % page.content.my_section_1, "<p>Here are the contents of <code>my_section_1</code></p>\n")
+        self.assertEqual("%s" % page.content.my_section_2, "<p>Here are the contents of <code>my_section_2</code></p>\n")
+
+    def test_section_meta(self):
+        page = self.parse('section_meta')
+
+        self.assertEqual(len(page.content), 2)
+        self.assertEqual("%s" % page.content.first, "<p>Here are the contents of first</p>\n")
+        self.assertEqual("%s" % page.content.second, "<p>Here are the contents of second</p>\n")
+
+        self.assertEqual({"some_key": "A value"}, page.content.first.meta)
+        self.assertEqual({"other_key": ["list", "of things"]}, page.content.second.meta)
+
+    def test_implicit_section_names(self):
+        page = self.parse('implicit_section_names')
+        sections = iter(page.content)
+
+        self.assertEqual(len(page.content), 2)
+        self.assertEqual(sections.next().name, 'section_0')
+        self.assertEqual(sections.next().name, 'section_1')
+
+    def test_bad_section_name(self):
+        self.assertRaises(SectionNameError, self.parse, 'bad_section_name')
 
 
 
-# class CodecsMock():
-#     """A mock class for codecs open function."""
-#     def __init__(self, data):
-#         self.data = data
-#     def readlines(self):
-#         """Return a list of lines, each line is appended with
-#         newline
-#         """
-#         return ["%s%s" % (i
-#    tem, "\n") for item in self.data.split("\n")]
-#     def close(self):
-#         pass
+if __name__ == '__main__':
+    unittest.main()
 
-# class TestParser(unittest.TestCase):
-
-#     def setUp(self):
-#         self.valid_file_content = """---
-# config: value
-# other: 123
-# ---
-
-# Body of the file.
-# """
-#         self.invalid_file_content = "A file without YAML Front Matter."
-
-#         self.parser = RaccontoParser()
-#         self.parser.filepath = "some/path"
-#         # Stash codecs.open() so we can restore after mock
-#         self._codecs_open = codecs.open
-#         # Stash RaccontoParser._create_[post/page] methods
-#         self._create_page = self.parser._create_page
-#         self._create_post = self.parser._create_post
-
-#     def tearDown(self):
-#         del self.valid_file_content
-#         del self.invalid_file_content
-#         codecs.open = self._codecs_open
-#         self.parser._create_page = self._create_page
-#         self.parser._create_post = self._create_post
-
-#     def test_parse_file(self):
-#         """Test that the _parse_file() chooses correct parser
-#         for posts and pages
-#         """
-#         # Mock _create_[post/page] methods
-#         self.parser._create_post = mock.Mock(return_value="post")
-#         self.parser._create_page = mock.Mock(return_value="page")
-#         # Test page
-#         self.assertEqual(self.parser._parse_file("path/to/page",
-#                                                  "", ""),
-#                          "page")
-#         # Test post
-#         self.assertEqual(self.parser._parse_file("path/to/2013-12-11-blog-post",
-#                                                  "", ""),
-#                          "post")
-
-#     def test_config_and_content_reader(self):
-#         codecs.open = mock.Mock(return_value=CodecsMock(self.valid_file_content))
-#         config, content = self.parser._config_and_content_reader("")
-#         self.assertEqual(config, {"config": "value",
-#                                   "other": 123}
-#                          )
-#         self.assertEqual(content, u"<p>Body of the file.</p>\n")
-
-#     def test_config_and_content_reader_with_invalid_data(self):
-#        codecs.open = mock.Mock(return_value=CodecsMock(self.invalid_file_content))
-#        self.assertRaises(MissingYAMLFrontMatterError,
-#                          self.parser._config_and_content_reader,
-#                          "")

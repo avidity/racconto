@@ -28,9 +28,8 @@ def compile_site():
     posts, pages = [], []
 
     # Parse content
-    parser = RaccontoParser()
     for f in entries:
-        parsed_file = parser.parse(f)
+        parsed_file = RaccontoParser(f).parse()
 
         if parsed_file is None:
             continue
