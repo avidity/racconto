@@ -1,7 +1,7 @@
 import unittest
 import mock
-import datetime
 import copy
+from datetime import date, timedelta
 
 from racconto.settings_manager import SettingsManager as SETTINGS
 from racconto.models import *
@@ -64,6 +64,38 @@ from racconto.models import *
 #         self.assertEqual(post_list[-1].date, self.today)
 #         self.assertEqual(post_list[0].date, in_4_days)
 
+class PageFactoryTest(unittest.TestCase):
+    def setUp(self):
+        self.the_meta = Meta({
+            "title": "The page title",
+            "slug": "some-slug",
+            "template": "a_template"
+        })
+        self.the_content = PageContent([Section("blah", "some content")], self.the_meta)
+        self.the_info = {
+            "filepath": "/path/to/a/file.md"
+        }
+        self.factory = PageFactory()
+
+    def tearDown(self):
+        pass
+
+    def test_create_post(self):
+        self.the_info['filepath'] = '/path/to/2015-01-18-the-page.md'
+        post = self.factory.page(self.the_content, self.the_info)
+
+        self.assertIsInstance(post, Post)
+
+    def test_create_page(self):
+        page = self.factory.page(self.the_content, self.the_info)
+
+        self.assertIsInstance(page, Page)
+
+    def test_passes_content(self):
+        page = self.factory.page(self.the_content, self.the_info)
+
+        self.assertEqual(page.meta, self.the_meta)
+        self.assertEqual(page.content, self.the_content)
 
 class PageTestDefaults(unittest.TestCase):
     def setUp(self):
@@ -80,12 +112,12 @@ class PageTestDefaults(unittest.TestCase):
     def tearDown(self):
         pass
 
+    def content(self):
+        return PageContent([Section(self.the_content, Meta())], Meta(self.the_metadata))
+
     def create_page(self):
         subject = self.subject()
-        return subject(
-            PageContent([Section(self.the_content, Meta())], Meta(self.the_metadata)),
-            self.the_info
-        )
+        return subject( self.content(), self.the_info )
 
 class TestPageBase(PageTestDefaults):
     def subject(self):
@@ -156,7 +188,9 @@ class TestPage(PageTestDefaults):
 class TestPost(PageTestDefaults):
     def setUp(self):
         super(TestPost, self).setUp()
-        self.the_info['date'] = datetime.strptime("2015 01 18", "%Y %m %d")
+        #import pdb; pdb.set_trace()
+        self.the_info['date'] = date(2015, 01, 18)
+        self.the_info['filepath'] = '/path/to/2015-01-18-the-slug.md'
 
     def subject(self):
         return Post
@@ -176,13 +210,36 @@ class TestPost(PageTestDefaults):
             self.assertEqual(page.template, the_template)
 
     def test_slug_value(self):
-        pass
+        del self.the_metadata['slug']
+        page = self.create_page()
+        self.assertEqual(page.slug, 'the-slug')
 
     def test_date_property(self):
-        pass
+        page = self.create_page()
+        self.assertEqual(page.date, self.the_info['date'])
 
     def test_file_path(self):
-        pass
+        page = self.create_page()
+        self.assertEqual(page.filepath, '2015/01/18/some-slug')
+
+    def test_file_path_no_meta_slug(self):
+        del self.the_metadata['slug']
+        page = self.create_page()
+        self.assertEqual(page.filepath, '2015/01/18/the-slug')
+
+    def test_posts_can_be_sorted(self):
+        post_list = []
+        today = date(2015, 01, 18)
+
+        for index in range(5):
+            self.the_info['date'] = today + timedelta(days=index)
+            post_list.append( Post(self.content(), self.the_info) )
+
+        post_list.sort()
+        in_4_days = today + timedelta(days=4)
+        self.assertEqual(post_list[-1].date, today)
+        self.assertEqual(post_list[0].date, in_4_days)
+
 
 class TestSection(unittest.TestCase):
     def setUp(self):
@@ -253,6 +310,9 @@ class TestPageContent(unittest.TestCase):
 
     def test_access_section_on_name(self):
         self.assertEqual(self.page_content.section_1, self.the_sections[0])
+
+    def test_stringifies_to_all_content(self):
+        self.assertEqual("%s" % self.page_content, "This is section 1\nThis movie is stupid")
 
 
 if __name__ == '__main__':

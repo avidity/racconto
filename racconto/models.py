@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from functools import total_ordering
 from racconto.settings_manager import SettingsManager as SETTINGS
@@ -6,16 +7,18 @@ from racconto.settings_manager import SettingsManager as SETTINGS
 # Page containers (Post and Page)
 #
 
+re_date = re.compile(r'^\d{4}-\d{1,2}-\d{1,2}')
+
 class PageFactory(object):
     def page(self, content, info):
         path = info['filepath']
         name = path.split('/')[-1:][0]
-        possible_date = " ".join(name.split('-')[0:3])
+        date_match = re_date.match(name)
 
-        try:
-            info['date'] = datetime.strptime(possible_date, "%Y %m %d")
+        if date_match:
+            info['date'] = datetime.strptime(date_match.group(0), "%Y-%m-%d")
             klass = Post
-        except ValueError:
+        else:
             klass = Page
 
         return klass(content, info)
@@ -69,8 +72,10 @@ class Post(PageBase):
         post - dictionary consisting of post properties
         """
         super(Post, self).__init__(content, info)
-        self.slug = self.slug[11:] # Truncate date
+
         self.date = info['date']
+        if not "slug" in self.meta:
+            self.slug = re.sub(r'^-|_', '', re_date.sub('', self.slug))
 
         if 'template' in self.meta:
             self.template = self.meta.template
@@ -80,7 +85,7 @@ class Post(PageBase):
         self.template_parameters["date"] = self.date
         self.template_parameters["slug"] = self.slug
         self.filepath = "%s/%s" % (
-            str(self.date.strftime('%Y-%m-%d')).replace('-','/'),
+            str(self.date.strftime('%Y/%m/%d')),
             self.slug,
         )
 
@@ -106,7 +111,7 @@ class PageContent(object):
     def __init__(self, sections, page_meta=None):
         self._iter_sections = iter(sections)
         self.sections = dict((s.name, s) for s in sections)
-        self.meta = page_meta
+        self.meta = Meta() if page_meta is None else page_meta
 
     def next(self):
         next(self._iter_sections)
@@ -124,13 +129,13 @@ class PageContent(object):
         return len(self.sections)
 
     def __str__(self):
-        return "\n".join(self.sections)
+        return "\n".join(s.content for s in self.sections.values())
 
 
 class Section(object):
     def __init__(self, name, content, meta=None):
         self.name = name
-        self.meta = meta
+        self.meta = Meta() if meta is None else meta
         self.content = content
 
     def __repr__(self):

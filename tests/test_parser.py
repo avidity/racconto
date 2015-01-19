@@ -33,13 +33,29 @@ class TestParse(unittest.TestCase):
         pass
 #        codecs.open = self._codecs_open
 
+    def parse(self, template):
+        return RaccontoParser(path_to(template)).parse()
+
     def test_meta_and_content(self):
-        parser = RaccontoParser(path_to('meta_and_content'))
-        result = parser.parse()
+        result = self.parse('meta_and_content')
 
         self.assertIsInstance(result, Page)
         self.assertIsInstance(result.content, PageContent)
         self.assertIsInstance(result.meta, Meta)
+
+    def test_page_meta_extraction(self):
+        result = self.parse('meta_and_content')
+
+        self.assertEqual(result.title, 'Page Title')
+        self.assertEqual(result.slug, 'meta_and_content')
+        self.assertEqual(result.meta.list, ['first thing', 'second thing'])
+
+    def test_content_extraction(self):
+        result = self.parse('meta_and_content')
+
+        self.assertEqual(len(result.content), 1)
+        self.assertEqual("%s" % result.content, '<p>Here are the contents</p>\n')
+
 
 
 # class CodecsMock():
@@ -111,32 +127,3 @@ class TestParse(unittest.TestCase):
 #        self.assertRaises(MissingYAMLFrontMatterError,
 #                          self.parser._config_and_content_reader,
 #                          "")
-
-
-templates = {
-    'meta_and_content': """
----
-title: Page Title
-list:
-    - first thing
-    - second thing
----
-Here are the contents
-""",
-
-
-    'bad_meta': """
----
-title: Page Title
-
-Here are the contents
-""",
-
-    'bad_meta_content': """
----
-title: Page Title
-@@@
-Here are the contents
-"""
-
-}

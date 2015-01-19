@@ -44,7 +44,8 @@ class RaccontoParser():
 
 
     def _parse_file_content(self):
-        self.fh = codecs.open(self.filepath, 'r', 'utf-8')
+        # FIXME: Open with codecs, but unbuffered
+        self.fh = open(self.filepath, 'r', 0) # 'utf-8', 'strict', 0)
 
         try:
             page_meta = self._meta_section()
@@ -66,7 +67,12 @@ class RaccontoParser():
         found_marker = False
         yaml = ""
 
-        for line in self.fh:
+        # Note: the "for line in fh" construct buffers, so we cannot use it while reading by line
+        while True:
+            line = self.fh.readline()
+            if not line:
+                break
+
             if not found_marker:
                 if self.re_empty.match(line):
                     pass
@@ -78,6 +84,7 @@ class RaccontoParser():
                     return None
             else:
                 if self.re_meta_marker.match(line):
+                    self.fh_pos = self.fh.tell()
                     return yaml
 
                 yaml += line
@@ -115,7 +122,11 @@ class RaccontoParser():
         markdown = ""
         name = None
 
-        for line in self.fh:
+        while True:
+            line = self.fh.readline()
+            if not line:
+                break
+
             if not found_content:
                 if self.re_empty.match(line):
                     continue
