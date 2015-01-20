@@ -79,6 +79,10 @@ class TestParse(unittest.TestCase):
     def test_bad_section_name(self):
         self.assertRaises(SectionNameError, self.parse, 'bad_section_name')
 
+    def test_section_whitespace(self):
+        page = self.parse('section_whitespace')
+        self.assertEqual("%s" % page.content.my_section, "<p>Here are the contents of my_section</p>\n")
+
 
 
 if __name__ == '__main__':

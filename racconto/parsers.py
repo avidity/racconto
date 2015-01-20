@@ -156,6 +156,7 @@ class RaccontoParser():
                     # else. The _meta_section() code then rolls back to the
                     # previous line, but we've just parsed it. So, we roll it
                     # forward again.
+
                     if len(meta) == 0:
                         self.fh.readline()
 
