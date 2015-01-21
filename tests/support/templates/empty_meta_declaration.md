@@ -1,0 +1,3 @@
+---
+---
+Empty meta declaration

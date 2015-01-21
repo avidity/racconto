@@ -81,7 +81,34 @@ class TestParse(unittest.TestCase):
 
     def test_section_whitespace(self):
         page = self.parse('section_whitespace')
+
         self.assertEqual("%s" % page.content.my_section, "<p>Here are the contents of my_section</p>\n")
+
+    def test_no_meta(self):
+        page = self.parse('no_meta')
+
+        self.assertEqual(len(page.meta), 0)
+        self.assertEqual("%s" % page.content, "<p>No meta</p>\n")
+
+    def test_no_content(self):
+        page = self.parse('no_content')
+
+        self.assertEqual(len(page.meta), 1)
+        self.assertEqual('%s' % page.content, "<p></p>\n")
+
+    def test_empty_meta_declaration(self):
+        page = self.parse('empty_meta_declaration')
+
+        self.assertEqual(len(page.meta), 0)
+        self.assertEqual('%s' % page.content, "<p>Empty meta declaration</p>\n")
+
+    def test_no_implicit_section_with_meta(self):
+        page = self.parse('no_implicit_section_with_meta')
+
+        self.assertEqual(page.meta, {'title': 'page meta'})
+        self.assertTrue("section_0" in page.content.sections)
+        self.assertEqual(page.content.section_0.meta, {})
+        self.assertEqual('%s' % page.content, '<hr />\n\n<h2>title: implicit meta</h2>\n\n<p>Empty meta declaration</p>\n')
 
 
 
