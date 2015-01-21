@@ -30,8 +30,9 @@ class SectionNameError(RaccontoParserError):
 
 class RaccontoParser():
     def __init__(self, filepath):
-        self.fh_pos = 0
+        self._fh_prev = 0
         self.fh = None
+        self.line = None
         self.filepath = filepath
 
         self.re_empty = re.compile(r'^\s*$')
@@ -39,12 +40,16 @@ class RaccontoParser():
         self.re_section_marker = re.compile(r'^\s*@@@\s*(?:(.+))?\s*$')
         self.re_section_name = re.compile(r'^[a-z0-9_]+$', re.IGNORECASE)
 
-    def parse(self):
-        """Parses markdown content to html files.
-        If file doesn't have a YAML Front Matter it
-        stops parsing and returns None
-        """
+    def readline(self):
+        self._fh_prev = self.fh.tell()
+        self.line = self.fh.readline()
 
+        return self.line
+
+    def rewind_one(self):
+        self.fh.seek(self._fh_prev - 1)
+
+    def parse(self):
         page_content = self._parse_file_content()
 
         return PageFactory().page(page_content, {
@@ -80,10 +85,8 @@ class RaccontoParser():
         yaml = ""
 
         # Note: the "for line in fh" construct buffers, so we cannot use it while reading by line
-        while True:
-            line = self.fh.readline()
-            if not line:
-                break
+        while self.readline():
+            line = self.line
 
             if not found_marker:
                 if self.re_empty.match(line):
@@ -92,16 +95,14 @@ class RaccontoParser():
                     found_marker = True
                 else:
                     # content other than yaml
-                    self.fh.seek(self.fh_pos)
+                    self.rewind_one()
+                    #self.fh.seek(self.fh_pos)
                     return None
             else:
                 if self.re_meta_marker.match(line):
-                    self.fh_pos = self.fh.tell()
                     return yaml
 
                 yaml += line
-
-            self.fh_pos = self.fh.tell()
 
         raise MetaBlockNotClosedError()
 
@@ -136,10 +137,8 @@ class RaccontoParser():
         meta = None
         name = None
 
-        while True:
-            line = self.fh.readline()
-            if not line:
-                break
+        while self.readline():
+            line = self.line
 
             if not found_content:
                 if self.re_empty.match(line):
@@ -158,16 +157,15 @@ class RaccontoParser():
                     # forward again.
 
                     if len(meta) == 0:
-                        self.fh.readline()
+                        self.readline()
 
                     continue
 
             if self.re_section_marker.match(line):
                 # rewind line
-                self.fh.seek(self.fh_pos)
+                self.rewind_one()
                 return name, meta, markdown, False
 
-            self.fh_pos = self.fh.tell()
             markdown += line
 
         return name, meta, markdown, True
