@@ -3,7 +3,8 @@ import argparse
 import codecs
 import os, glob, shutil
 
-from racconto.parsers import *
+from racconto.parsers import RaccontoParser
+from racconto.models import Page, Post
 from racconto.hooks.manager import HooksManager
 from racconto.generator import Generator
 from racconto.settings_manager import SettingsManager as SETTINGS
