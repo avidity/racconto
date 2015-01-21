@@ -28,17 +28,18 @@ class SectionNameError(RaccontoParserError):
         self.value = "%s not a valid section name ([a-z0-9_]+)" % name
 
 
+
+re_empty = re.compile(r'^\s*$')
+re_meta_marker = re.compile(r'^---\s*$')
+re_section_marker = re.compile(r'^\s*@@@\s*(?:(.+))?\s*$')
+re_section_name = re.compile(r'^[a-z0-9_]+$', re.IGNORECASE)
+
 class RaccontoParser():
     def __init__(self, filepath):
         self._fh_prev = 0
         self.fh = None
         self.line = None
         self.filepath = filepath
-
-        self.re_empty = re.compile(r'^\s*$')
-        self.re_meta_marker = re.compile(r'^---\s*$')
-        self.re_section_marker = re.compile(r'^\s*@@@\s*(?:(.+))?\s*$')
-        self.re_section_name = re.compile(r'^[a-z0-9_]+$', re.IGNORECASE)
 
     def readline(self):
         self._fh_prev = self.fh.tell()
@@ -92,9 +93,9 @@ class RaccontoParser():
             line = self.line
 
             if not found_marker:
-                if self.re_empty.match(line):
+                if re_empty.match(line):
                     pass
-                elif self.re_meta_marker.match(line):
+                elif re_meta_marker.match(line):
                     found_marker = True
                 else:
                     # content other than yaml
@@ -102,7 +103,7 @@ class RaccontoParser():
                     #self.fh.seek(self.fh_pos)
                     return None
             else:
-                if self.re_meta_marker.match(line):
+                if re_meta_marker.match(line):
                     return yaml
 
                 yaml += line
@@ -119,7 +120,7 @@ class RaccontoParser():
 
                 if name is None:
                     name = "section_%s" % len(sections)
-                elif not self.re_section_name.match(name):
+                elif not re_section_name.match(name):
                     raise SectionNameError(name)
 
                 markdown = m.markdown(content, extras=SETTINGS.get('MARKDOWN_EXTRAS'))
@@ -144,12 +145,12 @@ class RaccontoParser():
             line = self.line
 
             if not found_content:
-                if self.re_empty.match(line):
+                if re_empty.match(line):
                     continue
 
                 found_content = True
 
-                m = self.re_section_marker.match(line)
+                m = re_section_marker.match(line)
                 if m:
                     name = m.group(1)
                     meta = self._meta_section()
@@ -164,7 +165,7 @@ class RaccontoParser():
 
                     continue
 
-            if self.re_section_marker.match(line):
+            if re_section_marker.match(line):
                 # rewind line
                 self.rewind_one()
                 return name, meta, markdown, False
