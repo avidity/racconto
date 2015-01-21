@@ -25,7 +25,7 @@ class MetaBlockYAMLParseError(RaccontoParserError):
 
 class SectionNameError(RaccontoParserError):
     def __init__(self, name):
-        self.value = "%s not not a valid section name ([a-z0-9_]+)" % name
+        self.value = "%s not a valid section name ([a-z0-9_]+)" % name
 
 
 class RaccontoParser():
@@ -47,7 +47,7 @@ class RaccontoParser():
         return self.line
 
     def rewind_one(self):
-        self.fh.seek(self._fh_prev - 1)
+        self.fh.seek(max(self._fh_prev - 1, 0))
 
     def parse(self):
         page_content = self._parse_file_content()
@@ -76,9 +76,12 @@ class RaccontoParser():
             return Meta()
 
         try:
-            return Meta(yaml.load(yaml_text))
+            yaml_data = yaml.load(yaml_text) or {}
         except yaml.YAMLError, ex:
             raise MetaBlockYAMLParseError(ex)
+
+        return Meta(yaml_data)
+
 
     def _parse_meta_section(self):
         found_marker = False
